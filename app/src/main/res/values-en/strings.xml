@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sleepy Schedule</string>
+    <string name="app_name">Sleepy CQIE</string>
     <string name="widget_today_label">Today\'s Classes</string>
     <string name="widget_week_list_label">This Week (List)</string>
     <string name="widget_week_grid_label">This Week (Grid)</string>
@@ -343,7 +343,7 @@
     <string name="delete_period">Delete this period</string>
 
     <string name="mine_about">About</string>
-    <string name="mine_about_body">Sleepy Schedule v%1$s\n\nA minimal, clean, local-first schedule app.\nAll data stays on your device — nothing is uploaded.\n\n· No ads\n· No tracking\n· Supports WakeUp / ICS / CSV / HTML / plain text import</string>
+    <string name="mine_about_body">Sleepy CQIE v%1$s\n\nA minimal, clean, local-first schedule app.\nAll data stays on your device — nothing is uploaded.\n\n· No ads\n· No tracking\n· Supports WakeUp / ICS / CSV / HTML / plain text import</string>
 
     <string-array name="day_names">
         <item>Mon</item>
@@ -565,7 +565,7 @@
     <string name="error_no_version_found">No version found from main site or mirror</string>
     <string name="error_empty_download">Downloaded file is empty</string>
     <string name="cqie_table_name">Sleepy CQIE</string>
-    <string name="cqie_preview_total">%1$d items</string>
+    <string name="cqie_preview_total">Total: %1$d</string>
     <string name="cqie_preview_scheduled">Scheduled courses (%1$d)</string>
     <string name="cqie_preview_scheduled_row">%1$s · %2$s · day %3$d · periods %4$d-%5$d</string>
     <string name="cqie_preview_unscheduled">Unscheduled items (%1$d)</string>

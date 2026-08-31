@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sleepy 课程表</string>
+    <string name="app_name">Sleepy CQIE</string>
     <string name="widget_today_label">今日课程</string>
     <string name="widget_week_list_label">本周课表（列表）</string>
     <string name="widget_week_grid_label">本周课表（网格）</string>
@@ -450,7 +450,7 @@
 
     <!-- About -->
     <string name="mine_about">关于</string>
-    <string name="mine_about_body">Sleepy 课程表 v%1$s\n\n一个极简、干净、本地优先的课表工具。\n所有数据均存储在你的设备上，不上传任何服务器。\n\n· 无广告\n· 无追踪\n· 支持 WakeUp / ICS / CSV / HTML / 纯文本 导入</string>
+    <string name="mine_about_body">Sleepy CQIE v%1$s\n\n一个极简、干净、本地优先的课表工具。\n所有数据均存储在你的设备上，不上传任何服务器。\n\n· 无广告\n· 无追踪\n· 支持 WakeUp / ICS / CSV / HTML / 纯文本 导入</string>
 
     <!-- Day of week array (index 0 = Mon) -->
     <string-array name="day_names">

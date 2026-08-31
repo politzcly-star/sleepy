@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingion.sleepy.SleepyApp
 import com.lingion.sleepy.data.entity.CourseEntity
+import com.lingion.sleepy.data.jw.CqieAcademicSchedule
 import com.lingion.sleepy.data.jw.JwCourse
 import com.lingion.sleepy.data.jw.CqieParseResult
 import com.lingion.sleepy.data.jw.CqieUnscheduledKind
@@ -360,20 +361,24 @@ class JwImportActivity : ComponentActivity() {
                                             parsedCourses = courses
                                             parsedCqieResult = cqieResult
                                             parsedSchool = sch
-                                            // 根据课程实际节次数生成行；
-                                            // 如果 WebView 抓到 periods 则预填，否则空行让用户填
-                                            val maxNode = courses.maxOfOrNull { maxOf(it.startNode, it.endNode) } ?: 8
-                                            val periodMap = periods.associate { it.first to (it.second to it.third) }
-                                            val defaultPeriodMap = TimeTableUtils.parseTimeSlotRows(TimeTableUtils.DEFAULT_TIME_JSON)
-                                                .associate { it.node to (it.start to it.end) }
-                                            configRows = (1..maxNode).map { node ->
-                                                val filled = periodMap[node]
-                                                    ?: if (effectiveType == JwProtocol.TYPE_CQIE) defaultPeriodMap[node] else null
-                                                TimeTableUtils.TimeSlotRow(
-                                                    node = node,
-                                                    start = filled?.first ?: "",
-                                                    end = filled?.second ?: ""
-                                                )
+                                            configRows = if (effectiveType == JwProtocol.TYPE_CQIE) {
+                                                CqieAcademicSchedule.rows
+                                            } else {
+                                                // Other protocols derive their row count and times from the captured page.
+                                                val maxNode = courses.maxOfOrNull {
+                                                    maxOf(it.startNode, it.endNode)
+                                                } ?: 8
+                                                val periodMap = periods.associate {
+                                                    it.first to (it.second to it.third)
+                                                }
+                                                (1..maxNode).map { node ->
+                                                    val filled = periodMap[node]
+                                                    TimeTableUtils.TimeSlotRow(
+                                                        node = node,
+                                                        start = filled?.first ?: "",
+                                                        end = filled?.second ?: ""
+                                                    )
+                                                }
                                             }
                                             configStartDate = if (effectiveType == JwProtocol.TYPE_CQIE) {
                                                 LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()

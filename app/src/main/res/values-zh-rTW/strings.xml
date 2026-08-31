@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sleepy 課表</string>
+    <string name="app_name">Sleepy CQIE</string>
     <string name="widget_today_label">今日課程</string>
     <string name="widget_week_list_label">本週課表（列表）</string>
     <string name="widget_week_grid_label">本週課表（網格）</string>

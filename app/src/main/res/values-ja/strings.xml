@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sleepy 時間割</string>
+    <string name="app_name">Sleepy CQIE</string>
     <string name="widget_today_label">今日の授業</string>
     <string name="widget_week_list_label">今週の時間割（リスト）</string>
     <string name="widget_week_grid_label">今週の時間割（グリッド）</string>

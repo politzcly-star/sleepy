@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sleepy Horario</string>
+    <string name="app_name">Sleepy CQIE</string>
     <string name="widget_today_label">Clases de hoy</string>
     <string name="widget_week_list_label">Esta semana (lista)</string>
     <string name="widget_week_grid_label">Esta semana (cuadrícula)</string>
