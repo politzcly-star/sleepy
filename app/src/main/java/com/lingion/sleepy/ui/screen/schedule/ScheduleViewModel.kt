@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lingion.sleepy.R
 import com.lingion.sleepy.SleepyApp
 import com.lingion.sleepy.data.entity.CourseEntity
+import com.lingion.sleepy.data.entity.CqieUnscheduledEntity
 import com.lingion.sleepy.data.entity.TimeTableEntity
 import com.lingion.sleepy.data.repository.ScheduleRepository
 import com.lingion.sleepy.util.DateUtils
@@ -22,6 +23,7 @@ data class ScheduleState(
     val tables: List<TimeTableEntity> = emptyList(),
     val selectedTableId: Long? = null,
     val courses: List<CourseEntity> = emptyList(),
+    val cqieUnscheduled: List<CqieUnscheduledEntity> = emptyList(),
     val currentWeek: Int = 1,
     val selectedWeek: Int = 1,
     val nodesPerDay: Int = 12,
@@ -37,6 +39,8 @@ data class ScheduleState(
             }
     val currentTable: TimeTableEntity?
         get() = tables.find { it.id == selectedTableId }
+    val currentWeekUnscheduled: List<CqieUnscheduledEntity>
+        get() = cqieUnscheduled.filter { it.inWeek(selectedWeek) }
 }
 
 class ScheduleViewModel : ViewModel() {
@@ -70,7 +74,14 @@ class ScheduleViewModel : ViewModel() {
                     if (tables.isEmpty()) {
                         // 没有课表就老实空着，不强行造占位表。
                         // selectedTableId = null，UI 走空态。
-                        _state.update { it.copy(tables = emptyList(), selectedTableId = null) }
+                        _state.update {
+                            it.copy(
+                                tables = emptyList(),
+                                selectedTableId = null,
+                                courses = emptyList(),
+                                cqieUnscheduled = emptyList(),
+                            )
+                        }
                         return@collect
                     }
                     val selectedId = _state.value.selectedTableId
@@ -89,11 +100,20 @@ class ScheduleViewModel : ViewModel() {
         // 取消旧协程，避免多个 observeCourses 同时写 state.courses 互相覆盖
         coursesJob?.cancel()
         coursesJob = viewModelScope.launch {
-            repo.observeCourses(tableId).collect { courses ->
+            combine(
+                repo.observeCourses(tableId),
+                repo.observeCqieUnscheduled(tableId),
+            ) { courses, unscheduled -> courses to unscheduled }.collect { (courses, unscheduled) ->
                 _state.update { st ->
                     val table = st.tables.find { it.id == tableId }
                     val week = table?.let { DateUtils.currentWeek(it.startDate) } ?: 1
-                    st.copy(courses = courses, currentWeek = week, selectedWeek = week, nodesPerDay = table?.nodesPerDay ?: 12)
+                    st.copy(
+                        courses = courses,
+                        cqieUnscheduled = unscheduled,
+                        currentWeek = week,
+                        selectedWeek = week,
+                        nodesPerDay = table?.nodesPerDay ?: 12,
+                    )
                 }
                 // 课程数据变更后刷新所有 widget
                 try {

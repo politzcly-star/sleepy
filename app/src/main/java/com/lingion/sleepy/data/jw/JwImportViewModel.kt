@@ -5,7 +5,9 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.lingion.sleepy.data.entity.CourseEntity
+import com.lingion.sleepy.data.entity.CqieUnscheduledEntity
 import com.lingion.sleepy.data.entity.TimeTableEntity
+import com.lingion.sleepy.data.repository.ScheduleRepository
 import com.lingion.sleepy.data.AppDatabase
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
@@ -553,6 +555,57 @@ class JwImportViewModel(application: Application) : AndroidViewModel(application
                 color = defaultColor
             )
         }
+    }
+
+    suspend fun parseCqie(source: String): CqieParseResult = withContext(Dispatchers.IO) {
+        CqieParser(source).parse()
+    }
+
+    suspend fun importCqieSnapshot(
+        result: CqieParseResult,
+        targetTableId: Long?,
+        tableName: String,
+        startDate: String,
+        timeJson: String,
+        nodesPerDay: Int,
+    ): Long = withContext(Dispatchers.IO) {
+        require(result.validCourseCount > 0) { "CQIE 有效课程为空" }
+        val resolvedStartDate = DateUtils.normalizeStartDate(startDate)
+        val resolvedTimeJson = timeJson.ifBlank { TimeTableUtils.DEFAULT_TIME_JSON }
+        val maxNode = nodesPerDay.takeIf { it > 0 }
+            ?: result.scheduled.maxOfOrNull { maxOf(it.startNode, it.endNode) }
+            ?: TimeTableUtils.parseTimeSlotRows(resolvedTimeJson).size.coerceAtLeast(1)
+        val maxWeek = maxOf(
+            20,
+            result.scheduled.maxOfOrNull { it.endWeek } ?: 0,
+            result.unscheduled.maxOfOrNull { it.weeks.maxOrNull() ?: 0 } ?: 0,
+        )
+        val table = TimeTableEntity(
+            name = tableName.ifBlank { "Sleepy CQIE" },
+            startDate = resolvedStartDate,
+            maxWeek = maxWeek,
+            nodesPerDay = maxNode,
+            timeJson = resolvedTimeJson,
+            isDefault = true,
+        )
+        val courses = toCourseEntities(result.scheduled, tableId = 0, defaultColor = "#FF6750A4")
+        val unscheduled = result.unscheduled.map { item ->
+            CqieUnscheduledEntity(
+                tableId = 0,
+                courseName = item.name,
+                courseCode = item.courseCode,
+                teacher = item.teacher,
+                room = item.room,
+                weeksJson = JSONArray(item.weeks).toString(),
+                kind = item.kind.name,
+            )
+        }
+        ScheduleRepository(AppDatabase.get(getApplication())).replaceCqieSnapshot(
+            targetTableId = targetTableId,
+            tableTemplate = table,
+            courses = courses,
+            unscheduled = unscheduled,
+        )
     }
 
     /**

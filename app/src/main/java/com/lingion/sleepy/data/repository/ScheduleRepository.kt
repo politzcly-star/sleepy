@@ -2,10 +2,12 @@ package com.lingion.sleepy.data.repository
 
 import com.lingion.sleepy.data.AppDatabase
 import com.lingion.sleepy.data.entity.CourseEntity
+import com.lingion.sleepy.data.entity.CqieUnscheduledEntity
 import com.lingion.sleepy.data.entity.TimeTableEntity
 import com.lingion.sleepy.SleepyApp
 import com.lingion.sleepy.widget.WidgetUpdater
 import kotlinx.coroutines.flow.Flow
+import androidx.room.withTransaction
 
 /**
  * 课表仓库 — 业务数据访问的唯一入口。
@@ -16,6 +18,7 @@ class ScheduleRepository(private val db: AppDatabase) {
 
     private val courseDao = db.courseDao()
     private val tableDao = db.timeTableDao()
+    private val cqieUnscheduledDao = db.cqieUnscheduledDao()
 
     // ========== TimeTable ==========
 
@@ -74,6 +77,12 @@ class ScheduleRepository(private val db: AppDatabase) {
         courseDao.getByTableAndDayOnce(tableId, day)
 
     suspend fun getCourses(tableId: Long): List<CourseEntity> = courseDao.getByTable(tableId)
+
+    fun observeCqieUnscheduled(tableId: Long): Flow<List<CqieUnscheduledEntity>> =
+        cqieUnscheduledDao.observeByTable(tableId)
+
+    suspend fun getCqieUnscheduled(tableId: Long): List<CqieUnscheduledEntity> =
+        cqieUnscheduledDao.getByTable(tableId)
 
     suspend fun getCourse(id: Long): CourseEntity? = courseDao.getById(id)
 
@@ -134,6 +143,51 @@ class ScheduleRepository(private val db: AppDatabase) {
         val withGroupIds = assignGroupIds(courses)
         courseDao.replaceAll(tableId, withGroupIds)
         onDataChanged()
+    }
+
+    /** Replace one CQIE Room snapshot. All validation must finish before this method is called. */
+    suspend fun replaceCqieSnapshot(
+        targetTableId: Long?,
+        tableTemplate: TimeTableEntity,
+        courses: List<CourseEntity>,
+        unscheduled: List<CqieUnscheduledEntity>,
+    ): Long {
+        require(courses.isNotEmpty() || unscheduled.isNotEmpty()) { "CQIE 有效课程为空" }
+        val (tableId, replacedCourseIds) = db.withTransaction {
+            val existing = targetTableId?.takeIf { it > 0 }?.let { tableDao.getById(it) }
+            val resolvedId = if (existing == null) {
+                tableDao.insert(tableTemplate.copy(id = 0, isDefault = true))
+            } else {
+                tableDao.update(
+                    existing.copy(
+                        startDate = tableTemplate.startDate,
+                        maxWeek = tableTemplate.maxWeek,
+                        nodesPerDay = tableTemplate.nodesPerDay,
+                        timeJson = tableTemplate.timeJson,
+                        smartConfigJson = tableTemplate.smartConfigJson,
+                        isDefault = true,
+                    )
+                )
+                existing.id
+            }
+            tableDao.setDefault(resolvedId)
+
+            val normalizedCourses = assignGroupIds(
+                courses.map { it.copy(id = 0, tableId = resolvedId) }
+            )
+            val normalizedUnscheduled = unscheduled.map { it.copy(id = 0, tableId = resolvedId) }
+            val oldCourseIds = courseDao.getByTable(resolvedId).map { it.id }
+            courseDao.deleteByTableId(resolvedId)
+            cqieUnscheduledDao.deleteByTableId(resolvedId)
+            courseDao.insertAll(normalizedCourses)
+            cqieUnscheduledDao.insertAll(normalizedUnscheduled)
+            resolvedId to oldCourseIds
+        }
+        if (replacedCourseIds.isNotEmpty()) {
+            SleepyApp.get().notificationScheduler.cancelCourseAlarms(replacedCourseIds)
+        }
+        onDataChanged()
+        return tableId
     }
 
     /**

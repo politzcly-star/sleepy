@@ -266,7 +266,13 @@ private fun AppRoot(
                 Tab.Today -> TodayScreen(onEditCourse = { course -> editingCourse = course })
                 Tab.Manage -> {
                     val ctx = LocalContext.current
-                    ManagementPage(autoShowImportSheet = pendingImportText != null, onJwImportRequested = { ctx.startActivity(Intent(ctx, com.lingion.sleepy.ui.screen.imports.JwImportActivity::class.java)) }, onCreateNewTableRequested = {
+                    ManagementPage(autoShowImportSheet = pendingImportText != null, onJwImportRequested = {
+                        val targetId = mainVm.state.value.currentTable?.id ?: 0L
+                        ctx.startActivity(
+                            Intent(ctx, com.lingion.sleepy.ui.screen.imports.JwImportActivity::class.java)
+                                .putExtra(com.lingion.sleepy.ui.screen.imports.EXTRA_CQIE_TARGET_TABLE_ID, targetId)
+                        )
+                    }, onCreateNewTableRequested = {
                         mainScope.launch {
                             val previousId = mainVm.state.value.currentTable?.id
                             val newId = mainVm.createEmptyTable(commitSelection = false)

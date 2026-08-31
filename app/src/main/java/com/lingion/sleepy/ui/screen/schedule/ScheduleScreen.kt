@@ -13,11 +13,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,6 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingion.sleepy.R
 import com.lingion.sleepy.data.entity.CourseEntity
+import com.lingion.sleepy.data.entity.CqieUnscheduledEntity
+import com.lingion.sleepy.data.jw.CqieUnscheduledKind
 import com.lingion.sleepy.ui.component.CardsGridView
 import com.lingion.sleepy.ui.component.CourseDetailSheet
 import com.lingion.sleepy.ui.component.FullWeekView
@@ -84,7 +89,7 @@ fun ScheduleScreen(
     val visibleDays = remember { AppPrefs.getVisibleDays(context) }
 
     val hasTable = state.tables.isNotEmpty()
-    val hasCourses = state.courses.isNotEmpty()
+    val hasScheduleItems = state.courses.isNotEmpty() || state.cqieUnscheduled.isNotEmpty()
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -102,7 +107,7 @@ fun ScheduleScreen(
                     onManualAdd = onManualAdd
                 )
             }
-        } else if (!hasCourses) {
+        } else if (!hasScheduleItems) {
             // 有表无课：直接打开加课弹窗（addEmptyCourse 内部若 selectedTableId 为空会自动建表）
             Box(
                 modifier = Modifier
@@ -188,25 +193,32 @@ fun ScheduleScreen(
                         value = greySet
                     }
                 }
-                when (viewMode) {
-                    ViewMode.Full -> FullWeekView(
-                        courses = weekCourses,
-                        visibleDays = visibleDays,
-                        displayMode = displayMode,
-                        timeJson = state.currentTable?.timeJson ?: "",
-                        onCourseClick = { selectedCourse = it },
-                        greyDays = greyDays
+                Column(modifier = Modifier.fillMaxSize()) {
+                    CqieUnscheduledBand(
+                        items = state.cqieUnscheduled.filter { it.inWeek(page + 1) }
                     )
-                    ViewMode.Cards -> CardsGridView(
-                        courses = weekCourses,
-                        timeSlots = TimeTableUtils.timeSlotsFor(state.currentTable),
-                        visibleDays = visibleDays,
-                        showDate = showDate,
-                        startDate = state.currentTable?.startDate ?: "",
-                        currentWeek = page + 1,
-                        onCourseClick = { selectedCourse = it },
-                        greyDays = greyDays
-                    )
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        when (viewMode) {
+                            ViewMode.Full -> FullWeekView(
+                                courses = weekCourses,
+                                visibleDays = visibleDays,
+                                displayMode = displayMode,
+                                timeJson = state.currentTable?.timeJson ?: "",
+                                onCourseClick = { selectedCourse = it },
+                                greyDays = greyDays
+                            )
+                            ViewMode.Cards -> CardsGridView(
+                                courses = weekCourses,
+                                timeSlots = TimeTableUtils.timeSlotsFor(state.currentTable),
+                                visibleDays = visibleDays,
+                                showDate = showDate,
+                                startDate = state.currentTable?.startDate ?: "",
+                                currentWeek = page + 1,
+                                onCourseClick = { selectedCourse = it },
+                                greyDays = greyDays
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -221,6 +233,49 @@ fun ScheduleScreen(
                 onEditCourse(course)
             }
         )
+    }
+}
+
+@Composable
+private fun CqieUnscheduledBand(items: List<CqieUnscheduledEntity>) {
+    if (items.isEmpty()) return
+    val colors = SleepyTheme.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 180.dp)
+            .verticalScroll(rememberScrollState())
+            .background(colors.surfaceContainer)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.cqie_unscheduled_section),
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.onSurface,
+        )
+        items.forEach { item ->
+            val kind = when (runCatching { CqieUnscheduledKind.valueOf(item.kind) }.getOrNull()) {
+                CqieUnscheduledKind.WHOLE_WEEK -> stringResource(R.string.cqie_kind_whole_week)
+                CqieUnscheduledKind.NO_TIME_AND_ROOM -> stringResource(R.string.cqie_kind_no_time)
+                else -> stringResource(R.string.cqie_kind_missing_schedule)
+            }
+            val details = listOf(kind, item.teacher, item.room)
+                .filter { it.isNotBlank() }
+                .joinToString(" · ")
+            Column {
+                Text(
+                    text = item.courseName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurface,
+                )
+                Text(
+                    text = details,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

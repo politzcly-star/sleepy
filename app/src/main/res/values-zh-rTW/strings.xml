@@ -563,4 +563,18 @@
     <string name="error_unknown">未知錯誤</string>
     <string name="error_no_version_found">主站和鏡像都沒找到最新版本</string>
     <string name="error_empty_download">下載檔案為空</string>
+    <string name="cqie_table_name">Sleepy CQIE</string>
+    <string name="cqie_preview_total">共 %1$d 項</string>
+    <string name="cqie_preview_scheduled">定時課程（%1$d）</string>
+    <string name="cqie_preview_scheduled_row">%1$s · %2$s · 週%3$d · 第%4$d-%5$d節</string>
+    <string name="cqie_preview_unscheduled">未排時間項目（%1$d）</string>
+    <string name="cqie_preview_unscheduled_row">%1$s · %2$s · %3$s</string>
+    <string name="cqie_unscheduled_section">本週未排時間項目</string>
+    <string name="cqie_kind_whole_week">整週項目</string>
+    <string name="cqie_kind_no_time">未排時間與地點</string>
+    <string name="cqie_kind_missing_schedule">時間待定</string>
+    <string name="cqie_week_range_every">%1$d-%2$d週</string>
+    <string name="cqie_week_range_odd">%1$d-%2$d週（單週）</string>
+    <string name="cqie_week_range_even">%1$d-%2$d週（雙週）</string>
+    <string name="cqie_week_exact">%1$s週</string>
 </resources>

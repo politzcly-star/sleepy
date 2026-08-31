@@ -564,4 +564,18 @@
     <string name="error_unknown">Unknown error</string>
     <string name="error_no_version_found">No version found from main site or mirror</string>
     <string name="error_empty_download">Downloaded file is empty</string>
+    <string name="cqie_table_name">Sleepy CQIE</string>
+    <string name="cqie_preview_total">%1$d items</string>
+    <string name="cqie_preview_scheduled">Scheduled courses (%1$d)</string>
+    <string name="cqie_preview_scheduled_row">%1$s · %2$s · day %3$d · periods %4$d-%5$d</string>
+    <string name="cqie_preview_unscheduled">Unscheduled items (%1$d)</string>
+    <string name="cqie_preview_unscheduled_row">%1$s · %2$s · %3$s</string>
+    <string name="cqie_unscheduled_section">Unscheduled this week</string>
+    <string name="cqie_kind_whole_week">Whole-week item</string>
+    <string name="cqie_kind_no_time">Time and room not arranged</string>
+    <string name="cqie_kind_missing_schedule">Time pending</string>
+    <string name="cqie_week_range_every">weeks %1$d-%2$d</string>
+    <string name="cqie_week_range_odd">weeks %1$d-%2$d (odd)</string>
+    <string name="cqie_week_range_even">weeks %1$d-%2$d (even)</string>
+    <string name="cqie_week_exact">weeks %1$s</string>
 </resources>

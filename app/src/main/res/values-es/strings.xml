@@ -563,4 +563,18 @@
     <string name="error_unknown">Error desconocido</string>
     <string name="error_no_version_found">No se encontró versión en sitio principal ni espejo</string>
     <string name="error_empty_download">El archivo descargado está vacío</string>
+    <string name="cqie_table_name">Sleepy CQIE</string>
+    <string name="cqie_preview_total">%1$d elementos</string>
+    <string name="cqie_preview_scheduled">Cursos programados (%1$d)</string>
+    <string name="cqie_preview_scheduled_row">%1$s · %2$s · día %3$d · períodos %4$d-%5$d</string>
+    <string name="cqie_preview_unscheduled">Elementos sin horario (%1$d)</string>
+    <string name="cqie_preview_unscheduled_row">%1$s · %2$s · %3$s</string>
+    <string name="cqie_unscheduled_section">Sin horario esta semana</string>
+    <string name="cqie_kind_whole_week">Elemento de semana completa</string>
+    <string name="cqie_kind_no_time">Hora y aula sin asignar</string>
+    <string name="cqie_kind_missing_schedule">Horario pendiente</string>
+    <string name="cqie_week_range_every">semanas %1$d-%2$d</string>
+    <string name="cqie_week_range_odd">semanas %1$d-%2$d (impares)</string>
+    <string name="cqie_week_range_even">semanas %1$d-%2$d (pares)</string>
+    <string name="cqie_week_exact">semanas %1$s</string>
 </resources>

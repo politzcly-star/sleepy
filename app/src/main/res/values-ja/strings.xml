@@ -563,4 +563,18 @@
     <string name="error_unknown">不明なエラー</string>
     <string name="error_no_version_found">本サイトでもミラーでもバージョンが見つかりません</string>
     <string name="error_empty_download">ダウンロードファイルが空です</string>
+    <string name="cqie_table_name">Sleepy CQIE</string>
+    <string name="cqie_preview_total">%1$d 件</string>
+    <string name="cqie_preview_scheduled">時間指定の授業（%1$d）</string>
+    <string name="cqie_preview_scheduled_row">%1$s · %2$s · 曜日%3$d · %4$d-%5$d限</string>
+    <string name="cqie_preview_unscheduled">時間未定の項目（%1$d）</string>
+    <string name="cqie_preview_unscheduled_row">%1$s · %2$s · %3$s</string>
+    <string name="cqie_unscheduled_section">今週の時間未定項目</string>
+    <string name="cqie_kind_whole_week">週全体の項目</string>
+    <string name="cqie_kind_no_time">時間・場所未定</string>
+    <string name="cqie_kind_missing_schedule">時間未定</string>
+    <string name="cqie_week_range_every">第%1$d-%2$d週</string>
+    <string name="cqie_week_range_odd">第%1$d-%2$d週（奇数週）</string>
+    <string name="cqie_week_range_even">第%1$d-%2$d週（偶数週）</string>
+    <string name="cqie_week_exact">第%1$s週</string>
 </resources>

@@ -40,9 +40,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingion.sleepy.SleepyApp
 import com.lingion.sleepy.data.entity.CourseEntity
 import com.lingion.sleepy.data.jw.JwCourse
+import com.lingion.sleepy.data.jw.CqieParseResult
+import com.lingion.sleepy.data.jw.CqieUnscheduledKind
 import com.lingion.sleepy.data.jw.JwImportViewModel
 import com.lingion.sleepy.data.jw.JwParseDiagnostics
 import com.lingion.sleepy.data.jw.JwSchoolInfo
+import com.lingion.sleepy.data.jw.JwProtocol
 import com.lingion.sleepy.data.parser.ScheduleParser
 import com.lingion.sleepy.ui.component.DatePickerField
 import com.lingion.sleepy.ui.component.TimeSlotEditor
@@ -56,6 +59,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.rememberCoroutineScope
 import com.lingion.sleepy.R
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
+
+const val EXTRA_CQIE_TARGET_TABLE_ID = "com.lingion.sleepy.extra.CQIE_TARGET_TABLE_ID"
 
 /**
  * 教务直连导入主屏
@@ -80,7 +88,10 @@ class JwImportActivity : ComponentActivity() {
             SleepyThemeProvider(darkTheme = dark, themeKey = themeKey) {
                 val jwViewModel: JwImportViewModel = viewModel()
                 val scheduleViewModel: ScheduleViewModel = viewModel()
+                val scheduleState by scheduleViewModel.state.collectAsState()
                 val scope = rememberCoroutineScope()
+                val cqieTargetTableId = intent.getLongExtra(EXTRA_CQIE_TARGET_TABLE_ID, 0L)
+                    .takeIf { it > 0 }
 
                 var selectedSchool by remember { mutableStateOf<JwSchoolInfo?>(null) }
                 var stage by remember { mutableStateOf<Stage>(Stage.SelectSchool) }
@@ -89,6 +100,7 @@ class JwImportActivity : ComponentActivity() {
                 var importFinished by remember { mutableStateOf(false) }
                 // 解析后的课程暂存 + 配置确认状态
                 var parsedCourses by remember { mutableStateOf<List<JwCourse>>(emptyList()) }
+                var parsedCqieResult by remember { mutableStateOf<CqieParseResult?>(null) }
                 var parsedSchool by remember { mutableStateOf<JwSchoolInfo?>(null) }
                 var configStartDate by remember { mutableStateOf("") }
                 var configTimeJson by remember { mutableStateOf("") }
@@ -99,11 +111,13 @@ class JwImportActivity : ComponentActivity() {
                         LaunchedEffect(Unit) { finish() }
                     }
 
-                    stage is Stage.ConfigureConfirm && parsedCourses.isNotEmpty() -> {
+                    stage is Stage.ConfigureConfirm &&
+                        (parsedCourses.isNotEmpty() || parsedCqieResult?.unscheduled?.isNotEmpty() == true) -> {
                         val school = parsedSchool
                         if (school == null) {
                             stage = Stage.WebViewLogin
                             parsedCourses = emptyList()
+                            parsedCqieResult = null
                         } else {
                         val colors = SleepyTheme.colors
                         var confirmError by remember { mutableStateOf<String?>(null) }
@@ -111,13 +125,21 @@ class JwImportActivity : ComponentActivity() {
                             onDismissRequest = {
                                 stage = Stage.WebViewLogin
                                 parsedCourses = emptyList()
+                                parsedCqieResult = null
                             },
                             title = {
                                 Column {
                                     Text(getString(R.string.jw_config_title), color = colors.onSurface)
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        text = "${parsedCourses.size} ${getString(R.string.import_courses)}",
+                                        text = if (school.type == JwProtocol.TYPE_CQIE) {
+                                            getString(
+                                                R.string.cqie_preview_total,
+                                                parsedCourses.size + (parsedCqieResult?.unscheduled?.size ?: 0)
+                                            )
+                                        } else {
+                                            "${parsedCourses.size} ${getString(R.string.import_courses)}"
+                                        },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colors.onSurfaceVariant
                                     )
@@ -127,10 +149,64 @@ class JwImportActivity : ComponentActivity() {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .heightIn(max = 360.dp)
+                                        .heightIn(max = 520.dp)
                                         .verticalScroll(rememberScrollState()),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
+                                    if (parsedSchool?.type == JwProtocol.TYPE_CQIE) {
+                                        val targetName = cqieTargetTableId
+                                            ?.let { id -> scheduleState.tables.find { it.id == id }?.name }
+                                            ?: getString(R.string.cqie_table_name)
+                                        Text(
+                                            text = getString(R.string.import_target_table, targetName),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = colors.onSurface,
+                                        )
+                                        Text(
+                                            text = getString(R.string.cqie_preview_scheduled, parsedCourses.size),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = colors.onSurface,
+                                        )
+                                        parsedCourses.forEach { course ->
+                                            Text(
+                                                text = getString(
+                                                    R.string.cqie_preview_scheduled_row,
+                                                    course.name,
+                                                    cqieWeekText(course.startWeek, course.endWeek, course.type),
+                                                    course.day,
+                                                    course.startNode,
+                                                    course.endNode,
+                                                ),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = colors.onSurfaceVariant,
+                                            )
+                                        }
+                                        val unscheduled = parsedCqieResult?.unscheduled.orEmpty()
+                                        if (unscheduled.isNotEmpty()) {
+                                            Text(
+                                                text = getString(R.string.cqie_preview_unscheduled, unscheduled.size),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = colors.onSurface,
+                                            )
+                                            unscheduled.forEach { item ->
+                                                val kind = when (item.kind) {
+                                                    CqieUnscheduledKind.WHOLE_WEEK -> getString(R.string.cqie_kind_whole_week)
+                                                    CqieUnscheduledKind.NO_TIME_AND_ROOM -> getString(R.string.cqie_kind_no_time)
+                                                    CqieUnscheduledKind.MISSING_SCHEDULE -> getString(R.string.cqie_kind_missing_schedule)
+                                                }
+                                                Text(
+                                                    text = getString(
+                                                        R.string.cqie_preview_unscheduled_row,
+                                                        item.name,
+                                                        cqieExactWeeks(item.weeks),
+                                                        kind,
+                                                    ),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = colors.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                    }
                                     DatePickerField(
                                         value = configStartDate,
                                         onValueChange = { configStartDate = it },
@@ -175,18 +251,35 @@ class JwImportActivity : ComponentActivity() {
                                     scope.launch {
                                         try {
                                             val maxNode = configRows.maxOfOrNull { it.node } ?: 0
-                                            val tableId = jwViewModel.importAsNewTable(
-                                                courses = parsedCourses,
-                                                tableName = getString(R.string.jw_import_title, school.name),
-                                                startDate = configStartDate,
-                                                timeJson = configTimeJson,
-                                                nodesPerDay = maxNode
-                                            )
-                                            Log.d("JwImport", "importAsNewTable tableId=$tableId courses=${parsedCourses.size}")
-                                            statusMsg = getString(R.string.jw_import_success, parsedCourses.size)
+                                            val cqieResult = parsedCqieResult
+                                            val tableId = if (school.type == JwProtocol.TYPE_CQIE && cqieResult != null) {
+                                                jwViewModel.importCqieSnapshot(
+                                                    result = cqieResult,
+                                                    targetTableId = cqieTargetTableId,
+                                                    tableName = getString(R.string.cqie_table_name),
+                                                    startDate = configStartDate,
+                                                    timeJson = configTimeJson,
+                                                    nodesPerDay = maxNode,
+                                                )
+                                            } else {
+                                                jwViewModel.importAsNewTable(
+                                                    courses = parsedCourses,
+                                                    tableName = getString(R.string.jw_import_title, school.name),
+                                                    startDate = configStartDate,
+                                                    timeJson = configTimeJson,
+                                                    nodesPerDay = maxNode,
+                                                )
+                                            }
+                                            val importedCount = parsedCourses.size + (cqieResult?.unscheduled?.size ?: 0)
+                                            Log.d("JwImport", "import completed tableId=$tableId records=$importedCount")
+                                            statusMsg = getString(R.string.jw_import_success, importedCount)
                                             importFinished = true
                                         } catch (e: Exception) {
-                                            Log.e("JwImport", "import failed", e)
+                                            if (school.type == JwProtocol.TYPE_CQIE) {
+                                                Log.e("JwImport", "CQIE import failed type=${e::class.simpleName}")
+                                            } else {
+                                                Log.e("JwImport", "import failed", e)
+                                            }
                                             errorMsg = getString(R.string.jw_parse_failed, e.message ?: "")
                                             statusMsg = null
                                         }
@@ -199,6 +292,7 @@ class JwImportActivity : ComponentActivity() {
                                 TextButton(onClick = {
                                     stage = Stage.WebViewLogin
                                     parsedCourses = emptyList()
+                                    parsedCqieResult = null
                                 }) {
                                     Text(getString(R.string.back))
                                 }
@@ -237,9 +331,16 @@ class JwImportActivity : ComponentActivity() {
                                     statusMsg = getString(R.string.import_parsing)
                                     scope.launch {
                                         try {
-                                            val courses = jwViewModel.parseHtml(html, effectiveType ?: "")
-                                            Log.d("JwImport", "parseHtml returned ${courses.size} courses")
-                                            if (courses.isEmpty()) {
+                                            val cqieResult = if (effectiveType == JwProtocol.TYPE_CQIE) {
+                                                jwViewModel.parseCqie(html)
+                                            } else null
+                                            val courses = cqieResult?.scheduled
+                                                ?: jwViewModel.parseHtml(html, effectiveType ?: "")
+                                            Log.d(
+                                                "JwImport",
+                                                "parse returned scheduled=${courses.size} unscheduled=${cqieResult?.unscheduled?.size ?: 0}"
+                                            )
+                                            if ((cqieResult?.validCourseCount ?: courses.size) == 0) {
                                                 // T9 诊断壳: classify 拿精确分类再选文案
                                                 val diag = try {
                                                     JwParseDiagnostics.classify(
@@ -257,26 +358,40 @@ class JwImportActivity : ComponentActivity() {
                                             }
                                             // 不直接落库，进配置确认页
                                             parsedCourses = courses
+                                            parsedCqieResult = cqieResult
                                             parsedSchool = sch
                                             // 根据课程实际节次数生成行；
                                             // 如果 WebView 抓到 periods 则预填，否则空行让用户填
-                                            val maxNode = courses.maxOf { maxOf(it.startNode, it.endNode) }
+                                            val maxNode = courses.maxOfOrNull { maxOf(it.startNode, it.endNode) } ?: 8
                                             val periodMap = periods.associate { it.first to (it.second to it.third) }
+                                            val defaultPeriodMap = TimeTableUtils.parseTimeSlotRows(TimeTableUtils.DEFAULT_TIME_JSON)
+                                                .associate { it.node to (it.start to it.end) }
                                             configRows = (1..maxNode).map { node ->
                                                 val filled = periodMap[node]
+                                                    ?: if (effectiveType == JwProtocol.TYPE_CQIE) defaultPeriodMap[node] else null
                                                 TimeTableUtils.TimeSlotRow(
                                                     node = node,
                                                     start = filled?.first ?: "",
                                                     end = filled?.second ?: ""
                                                 )
                                             }
-                                            configStartDate = ""
-                                            configTimeJson = ""
+                                            configStartDate = if (effectiveType == JwProtocol.TYPE_CQIE) {
+                                                LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
+                                            } else ""
+                                            configTimeJson = if (effectiveType == JwProtocol.TYPE_CQIE) {
+                                                TimeTableUtils.buildTimeJsonFromRows(configRows)
+                                            } else ""
                                             stage = Stage.ConfigureConfirm
                                             statusMsg = null
                                         } catch (e: Exception) {
-                                            Log.e("JwImport", "parseHtml failed", e)
-                                            errorMsg = getString(R.string.jw_parse_failed, e.message ?: "") + getString(R.string.jw_parse_failed_hint)
+                                            if (effectiveType == JwProtocol.TYPE_CQIE) {
+                                                Log.e("JwImport", "CQIE parse failed type=${e::class.simpleName}")
+                                                errorMsg = getString(R.string.jw_parse_failed, e.message ?: "")
+                                            } else {
+                                                Log.e("JwImport", "parseHtml failed", e)
+                                                errorMsg = getString(R.string.jw_parse_failed, e.message ?: "") +
+                                                    getString(R.string.jw_parse_failed_hint)
+                                            }
                                             statusMsg = null
                                         }
                                     }
@@ -337,6 +452,15 @@ class JwImportActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun cqieWeekText(start: Int, end: Int, type: Int): String = when (type) {
+        1 -> getString(R.string.cqie_week_range_odd, start, end)
+        2 -> getString(R.string.cqie_week_range_even, start, end)
+        else -> getString(R.string.cqie_week_range_every, start, end)
+    }
+
+    private fun cqieExactWeeks(weeks: List<Int>): String =
+        getString(R.string.cqie_week_exact, weeks.joinToString(","))
 
     private sealed class Stage {
         object SelectSchool : Stage()
