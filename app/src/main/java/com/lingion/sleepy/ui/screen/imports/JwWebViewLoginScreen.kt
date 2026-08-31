@@ -57,6 +57,30 @@ import com.lingion.sleepy.data.jw.JwProtocol
 import com.lingion.sleepy.data.jw.JwSchoolInfo
 import com.lingion.sleepy.ui.theme.SleepyTheme
 import kotlinx.coroutines.launch
+import java.net.URI
+
+internal fun privacySafeWebViewUrl(rawUrl: String?): String {
+    if (rawUrl.isNullOrBlank()) return "<empty-url>"
+    return runCatching {
+        val uri = URI(rawUrl)
+        val scheme = uri.scheme?.lowercase() ?: return@runCatching "<invalid-url>"
+        val host = uri.host?.lowercase() ?: return@runCatching "<invalid-url>"
+        val port = if (uri.port >= 0) ":${uri.port}" else ""
+        val path = uri.rawPath?.takeIf { it.isNotBlank() } ?: "/"
+        "$scheme://$host$port$path"
+    }.getOrDefault("<invalid-url>")
+}
+
+internal fun isCqieOrigin(rawUrl: String?): Boolean = runCatching {
+    val uri = URI(rawUrl ?: return@runCatching false)
+    uri.scheme.equals("https", ignoreCase = true) &&
+        uri.host.equals("njw.cqie.edu.cn", ignoreCase = true) &&
+        uri.port == -1
+}.getOrDefault(false)
+
+private fun isCqieSchool(school: JwSchoolInfo): Boolean = runCatching {
+    URI(school.url).host.equals("njw.cqie.edu.cn", ignoreCase = true)
+}.getOrDefault(false)
 
 /**
  * 教务 WebView 登录页
@@ -126,6 +150,12 @@ fun JwWebViewLoginScreen(
         }
     }
 
+    val handleCqieSchemaProjection: (String) -> Unit = { projection ->
+        projection.chunked(3000).forEachIndexed { index, chunk ->
+            Log.i("CqieSchema", "chunk=${index + 1} $chunk")
+        }
+    }
+
     BackHandler {
         webViewRef?.let { wv ->
             if (wv.canGoBack()) wv.goBack() else onBack()
@@ -172,8 +202,16 @@ fun JwWebViewLoginScreen(
                         return@CaptureBar
                     }
                     val url = wv.url ?: ""
-                    Log.d("JwWebView", "capture tapped, current url=$url")
+                    Log.d("JwWebView", "capture tapped, current url=${privacySafeWebViewUrl(url)}")
                     scope.launch { snackbar.showSnackbar(fetchingMsg) }
+                    if (isCqieSchool(school)) {
+                        if (!isCqieOrigin(url)) {
+                            scope.launch { snackbar.showSnackbar(pageNotLoadedMsg) }
+                        } else {
+                            wv.evaluateJavascript(CQIE_SCHEMA_PROBE_JS, null)
+                        }
+                        return@CaptureBar
+                    }
                     // wisedu (金智 jwapp)：课表数据在 JSON API 不在页面 HTML，改用 fetch 拿 JSON（结果走 JS 桥回调）
                     if (school.type == JwProtocol.TYPE_WISEDU) {
                         wv.evaluateJavascript(WISEDU_FETCH_JS, null)
@@ -219,7 +257,9 @@ fun JwWebViewLoginScreen(
                 onProgressChange = { p -> progress = p },
                 onWebViewCreated = { wv -> webViewRef = wv },
                 onHtmlCaptured = { html -> onHtmlCaptured(html, school, emptyList()) },
-                onWiseduResult = handleWiseduResult
+                onWiseduResult = handleWiseduResult,
+                onCqieSchemaProjection = handleCqieSchemaProjection,
+                strictTls = isCqieSchool(school)
             )
 
             if (progress in 1..99) {
@@ -250,7 +290,9 @@ private fun JwWebView(
     onProgressChange: (Int) -> Unit,
     onWebViewCreated: (WebView) -> Unit,
     onHtmlCaptured: (String) -> Unit,
-    onWiseduResult: (String) -> Unit = {}
+    onWiseduResult: (String) -> Unit = {},
+    onCqieSchemaProjection: (String) -> Unit = {},
+    strictTls: Boolean = false
 ) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -262,13 +304,18 @@ private fun JwWebView(
                 )
                 // wisedu (金智) 协议：注册 JS 桥，async fetch 课表 JSON 完成后回调
                 addJavascriptInterface(WiseduBridge(onWiseduResult), "__sleepyBridge")
+                addJavascriptInterface(CqieSchemaBridge(onCqieSchemaProjection), "__cqieBridge")
                 settings.apply {
                     javaScriptEnabled = true
                     javaScriptCanOpenWindowsAutomatically = true
                     domStorageEnabled = true
                     useWideViewPort = true
                     loadWithOverviewMode = true
-                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    mixedContentMode = if (strictTls) {
+                        WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    } else {
+                        WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    }
                     cacheMode = WebSettings.LOAD_DEFAULT
                     setSupportZoom(true)
                     builtInZoomControls = true
@@ -291,10 +338,10 @@ private fun JwWebView(
                         handler: android.webkit.SslErrorHandler,
                         error: android.net.http.SslError
                     ) {
-                        handler.proceed()
+                        if (strictTls) handler.cancel() else handler.proceed()
                     }
                     override fun onPageFinished(view: WebView?, url: String?) {
-                        Log.d("JwWebView", "onPageFinished url=$url")
+                        Log.d("JwWebView", "onPageFinished url=${privacySafeWebViewUrl(url)}")
                     }
                 }
                 loadUrl(url)
@@ -302,6 +349,15 @@ private fun JwWebView(
             }
         }
     )
+}
+
+private class CqieSchemaBridge(private val onResult: (String) -> Unit) {
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+
+    @JavascriptInterface
+    fun onSchemaProjection(projection: String) {
+        main.post { onResult(projection) }
+    }
 }
 
 @Composable

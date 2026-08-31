@@ -123,6 +123,17 @@
   },
   {
     "sortKey": "C",
+    "name": "重庆工程学院",
+    "url": "https://njw.cqie.edu.cn/enroll/CourseStuSelectionList",
+    "aliases": [
+      "cqie",
+      "njw.cqie.edu.cn",
+      "chongqinggongchengxueyuan"
+    ],
+    "sortKeyFull": "chongqinggongchengxueyuan"
+  },
+  {
+    "sortKey": "C",
     "name": "重庆交通大学",
     "url": "http://jwgl.cqjtu.edu.cn/jsxsd/",
     "type": "qz",
