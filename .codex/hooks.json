@@ -1,0 +1,33 @@
+{
+  "version": "1",
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event SessionStart",
+        "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event SessionStart"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event PreToolUse",
+        "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event PreToolUse"
+      }
+    ],
+    "PreCompact": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event PreCompact",
+        "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event PreCompact"
+      }
+    ],
+    "PostCompact": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event PostCompact",
+        "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/harness-hook.ps1 -Event PostCompact"
+      }
+    ]
+  }
+}
