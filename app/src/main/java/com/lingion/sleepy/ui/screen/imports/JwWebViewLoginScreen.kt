@@ -52,6 +52,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lingion.sleepy.R
+import com.lingion.sleepy.data.jw.CqieFetchErrorKind
+import com.lingion.sleepy.data.jw.CqieFetchResult
+import com.lingion.sleepy.data.jw.CqieFetchResultCodec
+import com.lingion.sleepy.data.jw.FetchKind
+import com.lingion.sleepy.data.jw.JwFetchProtocol
 import com.lingion.sleepy.data.jw.JwImportViewModel
 import com.lingion.sleepy.data.jw.JwProtocol
 import com.lingion.sleepy.data.jw.JwSchoolInfo
@@ -79,7 +84,8 @@ internal fun isCqieOrigin(rawUrl: String?): Boolean = runCatching {
 }.getOrDefault(false)
 
 private fun isCqieSchool(school: JwSchoolInfo): Boolean = runCatching {
-    URI(school.url).host.equals("njw.cqie.edu.cn", ignoreCase = true)
+    school.type == JwProtocol.TYPE_CQIE &&
+        URI(school.url).host.equals("njw.cqie.edu.cn", ignoreCase = true)
 }.getOrDefault(false)
 
 /**
@@ -113,6 +119,9 @@ fun JwWebViewLoginScreen(
     val fetchFormatErrorMsg = stringResource(R.string.jw_fetch_format_error)
     val fetchFailedFmt = stringResource(R.string.jw_fetch_failed)
     val pageNotLoadedMsg = stringResource(R.string.jw_page_not_loaded)
+    val sessionExpiredMsg = stringResource(R.string.jw_fetch_session_expired)
+    val networkMsg = stringResource(R.string.jw_fetch_network)
+    val emptyMsg = stringResource(R.string.jw_fetch_empty)
 
     // wisedu (金智) 协议：WebView 内 fetch 课表 JSON 的回调结果处理
     // 桥回调已切到主线程；result 形如 {ok:true,data:"<xskcb.do JSON>"} 或 {ok:false,err:"..."}
@@ -150,9 +159,27 @@ fun JwWebViewLoginScreen(
         }
     }
 
-    val handleCqieSchemaProjection: (String) -> Unit = { projection ->
-        projection.chunked(3000).forEachIndexed { index, chunk ->
-            Log.i("CqieSchema", "chunk=${index + 1} $chunk")
+    val handleCqieResult: (String) -> Unit = { message ->
+        when (val result = CqieFetchResultCodec.decode(message)) {
+            is CqieFetchResult.Success -> {
+                Log.d("JwWebView", "CQIE fetch completed bodyLen=${result.body.length}")
+                onHtmlCaptured(result.body, school, emptyList())
+            }
+            is CqieFetchResult.Failure -> {
+                Log.w("JwWebView", "CQIE fetch failed kind=${result.kind} status=${result.status ?: 0}")
+                val userMessage = when (result.kind) {
+                    CqieFetchErrorKind.SESSION_EXPIRED,
+                    CqieFetchErrorKind.LOGIN_REDIRECT,
+                    CqieFetchErrorKind.LOGIN_PAGE -> sessionExpiredMsg
+                    CqieFetchErrorKind.WRONG_ORIGIN -> pageNotLoadedMsg
+                    CqieFetchErrorKind.NETWORK,
+                    CqieFetchErrorKind.HTTP_ERROR -> networkMsg
+                    CqieFetchErrorKind.EMPTY -> emptyMsg
+                    CqieFetchErrorKind.MALFORMED_JSON,
+                    CqieFetchErrorKind.BRIDGE_ERROR -> fetchFormatErrorMsg
+                }
+                scope.launch { snackbar.showSnackbar(userMessage) }
+            }
         }
     }
 
@@ -204,11 +231,11 @@ fun JwWebViewLoginScreen(
                     val url = wv.url ?: ""
                     Log.d("JwWebView", "capture tapped, current url=${privacySafeWebViewUrl(url)}")
                     scope.launch { snackbar.showSnackbar(fetchingMsg) }
-                    if (isCqieSchool(school)) {
-                        if (!isCqieOrigin(url)) {
+                    if (school.type == JwProtocol.TYPE_CQIE) {
+                        if (JwFetchProtocol.pick(school, url) != FetchKind.CQIE || !isCqieOrigin(url)) {
                             scope.launch { snackbar.showSnackbar(pageNotLoadedMsg) }
                         } else {
-                            wv.evaluateJavascript(CQIE_SCHEMA_PROBE_JS, null)
+                            wv.evaluateJavascript(CQIE_FETCH_JS, null)
                         }
                         return@CaptureBar
                     }
@@ -258,7 +285,7 @@ fun JwWebViewLoginScreen(
                 onWebViewCreated = { wv -> webViewRef = wv },
                 onHtmlCaptured = { html -> onHtmlCaptured(html, school, emptyList()) },
                 onWiseduResult = handleWiseduResult,
-                onCqieSchemaProjection = handleCqieSchemaProjection,
+                onCqieResult = handleCqieResult,
                 strictTls = isCqieSchool(school)
             )
 
@@ -291,7 +318,7 @@ private fun JwWebView(
     onWebViewCreated: (WebView) -> Unit,
     onHtmlCaptured: (String) -> Unit,
     onWiseduResult: (String) -> Unit = {},
-    onCqieSchemaProjection: (String) -> Unit = {},
+    onCqieResult: (String) -> Unit = {},
     strictTls: Boolean = false
 ) {
     AndroidView(
@@ -304,7 +331,7 @@ private fun JwWebView(
                 )
                 // wisedu (金智) 协议：注册 JS 桥，async fetch 课表 JSON 完成后回调
                 addJavascriptInterface(WiseduBridge(onWiseduResult), "__sleepyBridge")
-                addJavascriptInterface(CqieSchemaBridge(onCqieSchemaProjection), "__cqieBridge")
+                addJavascriptInterface(CqieFetchBridge(onCqieResult), "__cqieBridge")
                 settings.apply {
                     javaScriptEnabled = true
                     javaScriptCanOpenWindowsAutomatically = true
@@ -328,7 +355,11 @@ private fun JwWebView(
                         onProgressChange(newProgress)
                     }
                     override fun onConsoleMessage(msg: android.webkit.ConsoleMessage?): Boolean {
-                        Log.d("JwWebView", "console[${msg?.messageLevel()}]: ${msg?.message()}")
+                        if (strictTls) {
+                            Log.d("JwWebView", "console[${msg?.messageLevel()}]: message suppressed")
+                        } else {
+                            Log.d("JwWebView", "console[${msg?.messageLevel()}]: ${msg?.message()}")
+                        }
                         return true
                     }
                 }
@@ -351,12 +382,12 @@ private fun JwWebView(
     )
 }
 
-private class CqieSchemaBridge(private val onResult: (String) -> Unit) {
+private class CqieFetchBridge(private val callback: (String) -> Unit) {
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     @JavascriptInterface
-    fun onSchemaProjection(projection: String) {
-        main.post { onResult(projection) }
+    fun onResult(message: String) {
+        main.post { callback(message) }
     }
 }
 

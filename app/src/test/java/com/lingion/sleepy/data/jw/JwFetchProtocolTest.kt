@@ -12,6 +12,14 @@ class JwFetchProtocolTest {
     private val qz = JwSchoolInfo("J", "JSNU", url = "https://jwxt.jsnu.edu.cn/jsxsd/", type = JwProtocol.TYPE_QZ)
     private val qzWebvpn = qz.copy(url = "https://webvpn.example.edu.cn/webvpn/jwxt.jsnu.edu.cn/jsxsd/xskb/xskb_list.do")
     private val zfold = JwSchoolInfo("X", "XUST", url = "https://jw.xust.edu.cn/xskbcx.aspx", type = JwProtocol.TYPE_ZF)
+    private val cqie = JwSchoolInfo("C", "重庆工程学院", url = "https://njw.cqie.edu.cn/enroll/CourseStuSelectionList", type = JwProtocol.TYPE_CQIE)
+
+    @Test fun `CQIE requires exact production origin`() {
+        assertEquals(FetchKind.CQIE, JwFetchProtocol.pick(cqie, cqie.url))
+        assertNull(JwFetchProtocol.pick(cqie, "http://njw.cqie.edu.cn/enroll/CourseStuSelectionList"))
+        assertNull(JwFetchProtocol.pick(cqie, "https://njw.cqie.edu.cn.evil.example/path"))
+        assertNull(JwFetchProtocol.pick(cqie, "https://njw.cqie.edu.cn:444/path"))
+    }
 
     @Test fun `wisedu HRBEU direct`() {
         val url = "https://jwgl.hrbeu.edu.cn/jwapp/sys/wdkb/modules/xskcb/xskcb.do"
@@ -70,6 +78,7 @@ class JwFetchProtocolTest {
     }
 
     @Test fun `pathSegment returns the protocol path without leading slash`() {
+        assertEquals("api/enrollment", JwFetchProtocol.pathSegment(FetchKind.CQIE))
         assertEquals("jwapp",  JwFetchProtocol.pathSegment(FetchKind.WISEDU))
         assertEquals("jwglxt", JwFetchProtocol.pathSegment(FetchKind.ZF_NEW))
         assertEquals("jsxsd",  JwFetchProtocol.pathSegment(FetchKind.QZ))

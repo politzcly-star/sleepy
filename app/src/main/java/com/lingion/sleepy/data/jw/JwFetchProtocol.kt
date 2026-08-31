@@ -6,7 +6,7 @@ package com.lingion.sleepy.data.jw
  * pick 返回 null = 走原有 outerHTML 路径(默认)。
  * 决策依据: 学校 type 显式声明 > URL 路径指纹(含 WebVPN 重写形态) > enableFetch 开关。
  */
-enum class FetchKind { WISEDU, ZF_NEW, QZ }
+enum class FetchKind { CQIE, WISEDU, ZF_NEW, QZ }
 
 object JwFetchProtocol {
 
@@ -15,6 +15,7 @@ object JwFetchProtocol {
         val u = (currentUrl ?: school.url).lowercase()
         // ① 显式 type 优先
         when (school.type) {
+            JwProtocol.TYPE_CQIE -> if (isCqieOrigin(u)) return FetchKind.CQIE
             JwProtocol.TYPE_WISEDU -> if (u.contains("/jwapp/")) return FetchKind.WISEDU
             JwProtocol.TYPE_ZF_NEW -> if (u.contains("/jwglxt/") || WEBVPN_HTTP_HEX.containsMatchIn(u)) {
                 return FetchKind.ZF_NEW
@@ -35,8 +36,16 @@ object JwFetchProtocol {
 
     private val WEBVPN_HTTP_HEX = Regex("""/http/[0-9a-f]{4,8}/""")
 
+    private fun isCqieOrigin(url: String): Boolean = runCatching {
+        val uri = java.net.URI(url)
+        uri.scheme.equals("https", ignoreCase = true) &&
+            uri.host.equals("njw.cqie.edu.cn", ignoreCase = true) &&
+            uri.port == -1
+    }.getOrDefault(false)
+
     /** 协议段(不带前导斜杠): jwapp / jwglxt / jsxsd */
     fun pathSegment(kind: FetchKind): String = when (kind) {
+        FetchKind.CQIE -> "api/enrollment"
         FetchKind.WISEDU -> "jwapp"
         FetchKind.ZF_NEW -> "jwglxt"
         FetchKind.QZ -> "jsxsd"

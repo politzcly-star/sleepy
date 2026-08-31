@@ -36,6 +36,9 @@ object JwProtocol {
     /** 金智 Wisedu jwapp 微应用平台（JSON API 直连，非 HTML 解析）。如：哈尔滨工程大学 jwgl.hrbeu.edu.cn */
     const val TYPE_WISEDU = "wisedu"
 
+    /** 重庆工程学院新教务：同源 JSON API，仅允许 CQIE 专用解析器处理。 */
+    const val TYPE_CQIE = "cqie"
+
     /**
      * 湖南科大教务（正方青春版/强智混合自建，kdjw.hnust.cn / xxjw.hnust.cn）。
      * schools.json 已有 3 所 type="hnust" 的学校；T3 移植 HNUSTParser，T6 先补常量
@@ -61,7 +64,7 @@ object JwProtocol {
      *                            qz > qz_crazy > qz_br > qz_with_node > qz_old
      */
     val ALL_TYPES: List<String> = listOf(
-        TYPE_WISEDU, TYPE_PKU, TYPE_BNUZ, TYPE_CF, TYPE_HNUST, TYPE_HNIU,
+        TYPE_CQIE, TYPE_WISEDU, TYPE_PKU, TYPE_BNUZ, TYPE_CF, TYPE_HNUST, TYPE_HNIU,
         TYPE_ZF, TYPE_ZF_1, TYPE_URP, TYPE_URP_NEW, TYPE_ZF_NEW,
         TYPE_QZ, TYPE_QZ_CRAZY, TYPE_QZ_BR, TYPE_QZ_WITH_NODE, TYPE_QZ_OLD,
     )
@@ -77,6 +80,7 @@ object JwProtocol {
         TYPE_PKU -> "北京大学"
         TYPE_BNUZ -> "北师珠"
         TYPE_WISEDU -> "金智教务（直连）"
+        TYPE_CQIE -> "CQIE 教务（直连）"
         TYPE_HNUST -> "湖南科大教务"
         TYPE_HNIU -> "湖南信息职业技术学院"
         TYPE_LOGIN -> "特殊登录（v1 暂不支持）"
@@ -93,6 +97,7 @@ object JwProtocol {
         TYPE_ZF, TYPE_ZF_1, TYPE_ZF_NEW -> "zf"
         TYPE_URP, TYPE_URP_NEW -> "urp"
         TYPE_WISEDU -> "wisedu"
+        TYPE_CQIE -> "cqie"
         TYPE_HNUST, TYPE_HNIU -> "hnust"
         TYPE_CF -> "cf"
         TYPE_PKU, TYPE_BNUZ -> "other"

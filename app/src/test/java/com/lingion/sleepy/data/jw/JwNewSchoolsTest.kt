@@ -179,7 +179,8 @@ class JwNewSchoolsTest {
             JwProtocol.TYPE_QZ, JwProtocol.TYPE_QZ_OLD, JwProtocol.TYPE_QZ_CRAZY,
             JwProtocol.TYPE_QZ_BR, JwProtocol.TYPE_QZ_WITH_NODE,
             JwProtocol.TYPE_ZF, JwProtocol.TYPE_ZF_1, JwProtocol.TYPE_ZF_NEW,
-            JwProtocol.TYPE_URP, JwProtocol.TYPE_URP_NEW, JwProtocol.TYPE_WISEDU
+            JwProtocol.TYPE_URP, JwProtocol.TYPE_URP_NEW, JwProtocol.TYPE_WISEDU,
+            JwProtocol.TYPE_CQIE
         )
         val pendingTypes = listOf(
             "com.lingion.sleepy.data.jw.JwChengFangParser" to "cf",

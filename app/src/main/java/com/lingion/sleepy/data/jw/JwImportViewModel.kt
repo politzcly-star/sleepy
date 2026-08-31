@@ -314,6 +314,8 @@ class JwImportViewModel(application: Application) : AndroidViewModel(application
                 || u.contains("/cas/login")
                 || u.contains("/authserver/login") -> null
 
+            u.startsWith("https://njw.cqie.edu.cn/") -> JwProtocol.TYPE_CQIE
+
             // WebVPN 路径重写形态（/webvpn/<host>/、/http/<hex>/、hex-host.webvpn.）：
             // host 段不可见，CF/PKU/BNUZ/HNUST 的 host 级与弱路径锚点在重写下不可靠 → 跳过 ⑦-⑩
             u.contains("/webvpn/")
@@ -406,6 +408,10 @@ class JwImportViewModel(application: Application) : AndroidViewModel(application
             val title = extractTitle(html)
 
             return when {
+                lower.contains("njw.cqie.edu.cn")
+                    && (lower.contains("coursestuselectionlist") || lower.contains("cqie-timetable-root")) ->
+                    JwProtocol.TYPE_CQIE
+
                 // ⓪ BNUZ 必须先于 ZF 判：北师珠页同含 __VIEWSTATE/CheckCode.aspx，
                 //    唯一次级锚点是 form action="default.aspx"（老正方是 default2.aspx）。
                 //    课表页无表单，用校名 title 兜底；含 default2.aspx 的页面（老正方混入提示）排除。
@@ -496,6 +502,8 @@ class JwImportViewModel(application: Application) : AndroidViewModel(application
             val lower = html.lowercase()
             val title = extractTitle(html)
             val hits = mutableListOf<String>()
+            if (lower.contains("njw.cqie.edu.cn")) hits += "njw.cqie.edu.cn"
+            if (lower.contains("cqie-timetable-root")) hits += "cqie-timetable-root"
             if (lower.contains("zftal-ui-")) hits += "zftal-ui-"
             if (title.contains("教学管理信息服务平台")) hits += "title:教学管理信息服务平台"
             if (lower.contains("__viewstate")) hits += "__VIEWSTATE"

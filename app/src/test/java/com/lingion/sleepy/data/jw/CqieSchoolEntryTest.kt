@@ -1,7 +1,6 @@
 package com.lingion.sleepy.data.jw
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -13,7 +12,7 @@ class CqieSchoolEntryTest {
     )
 
     @Test
-    fun `CQIE opens the approved timetable page without claiming an HTML protocol`() {
+    fun `CQIE opens the approved timetable page with its dedicated protocol`() {
         val cqie = loadSchools().single { it.name == "重庆工程学院" }
 
         assertEquals("C", cqie.sortKey)
@@ -22,7 +21,7 @@ class CqieSchoolEntryTest {
             "https://njw.cqie.edu.cn/enroll/CourseStuSelectionList",
             cqie.url
         )
-        assertNull(cqie.type)
+        assertEquals(JwProtocol.TYPE_CQIE, cqie.type)
         assertTrue(cqie.isSupported)
         assertTrue(cqie.aliases.containsAll(listOf("cqie", "njw.cqie.edu.cn")))
     }

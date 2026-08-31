@@ -41,8 +41,8 @@ class JwProtocolAllTypesTest {
         for (t in JwProtocol.ALL_TYPES) {
             assertTrue("type $t displayName 必须非空", JwProtocol.displayName(t).isNotBlank())
             assertTrue(
-                "type $t category 必须落到已知七档之一",
-                JwProtocol.category(t) in setOf("qz", "zf", "urp", "wisedu", "hnust", "cf", "other"),
+                "type $t category 必须落到已知类别之一",
+                JwProtocol.category(t) in setOf("cqie", "qz", "zf", "urp", "wisedu", "hnust", "cf", "other"),
             )
         }
     }

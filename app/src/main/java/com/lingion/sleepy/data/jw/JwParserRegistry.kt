@@ -26,6 +26,7 @@ object JwParserRegistry {
      * 优先级反映"误抢风险"：协议族特征越窄、越独特，越优先。
      */
     private val TYPE_PRIORITY: Map<String, Int> = linkedMapOf(
+        JwProtocol.TYPE_CQIE to 5,
         JwProtocol.TYPE_WISEDU to 10,
         JwProtocol.TYPE_PKU to 20,
         JwProtocol.TYPE_BNUZ to 30,
@@ -49,6 +50,7 @@ object JwParserRegistry {
      * 注意：TYPE_ZF_1 复用 JwOldZfParser(type=1)。
      */
     private val FACTORIES: Map<String, (String) -> JwParser> = linkedMapOf(
+        JwProtocol.TYPE_CQIE to ::CqieParser,
         JwProtocol.TYPE_WISEDU to ::JwWiseduParser,
         JwProtocol.TYPE_URP_NEW to ::JwNewUrpParser,
         JwProtocol.TYPE_ZF_NEW to ::JwNewZfParser,

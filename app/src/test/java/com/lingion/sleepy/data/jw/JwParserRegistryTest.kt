@@ -15,9 +15,9 @@ class JwParserRegistryTest {
         File("src/test/resources/jw_fixtures/$path").readText(Charsets.UTF_8)
 
     @Test
-    fun `all 16 protocol types are routable`() {
+    fun `all 17 protocol types are routable`() {
         val types = listOf(
-            JwProtocol.TYPE_WISEDU, JwProtocol.TYPE_PKU, JwProtocol.TYPE_BNUZ,
+            JwProtocol.TYPE_CQIE, JwProtocol.TYPE_WISEDU, JwProtocol.TYPE_PKU, JwProtocol.TYPE_BNUZ,
             JwProtocol.TYPE_CF, JwProtocol.TYPE_HNUST, JwProtocol.TYPE_HNIU,
             JwProtocol.TYPE_ZF, JwProtocol.TYPE_ZF_1, JwProtocol.TYPE_URP,
             JwProtocol.TYPE_URP_NEW, JwProtocol.TYPE_ZF_NEW,
@@ -30,9 +30,9 @@ class JwParserRegistryTest {
     }
 
     @Test
-    fun `ALL_TYPES contains 16 routable types in priority order`() {
-        assertEquals(16, JwProtocol.ALL_TYPES.size)
-        assertEquals(JwProtocol.TYPE_WISEDU, JwProtocol.ALL_TYPES.first())
+    fun `ALL_TYPES contains 17 routable types in priority order`() {
+        assertEquals(17, JwProtocol.ALL_TYPES.size)
+        assertEquals(JwProtocol.TYPE_CQIE, JwProtocol.ALL_TYPES.first())
         val qzIndices = JwProtocol.ALL_TYPES.mapIndexed { i, t -> i to t }.filter { it.second.startsWith("qz") }
         assertEquals(5, qzIndices.size)
         assertTrue("qz_old 必须在末位", qzIndices.last().second == JwProtocol.TYPE_QZ_OLD)
@@ -126,7 +126,7 @@ class JwParserRegistryTest {
         val html = loadFixture("adversarial/empty-semester/unknown_protocol_all_parsers_empty.html")
         val (best, attempts) = JwImportViewModel.tryAllParsersForTestWithAttempts(html)
         assertEquals(0, best.size)
-        assertTrue("attempts 必须包含全部 16 候选", attempts.size >= 16)
+        assertTrue("attempts 必须包含全部 17 候选", attempts.size >= 17)
         assertTrue("全部 attempt 都应 0 课", attempts.all { it.courseCount == 0 })
     }
 

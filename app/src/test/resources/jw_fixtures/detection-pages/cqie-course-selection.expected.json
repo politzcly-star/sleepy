@@ -1,0 +1,11 @@
+{
+  "_note": "CQIE 公开路由的合成检测页；不包含账号、会话或个人课表数据。",
+  "_fingerprint": {
+    "urlMarkers": ["https://njw.cqie.edu.cn/enroll/CourseStuSelectionList"],
+    "htmlMarkers": ["njw.cqie.edu.cn", "cqie-timetable-root"],
+    "expectedProtocol": "cqie",
+    "expectedConfidence": 100,
+    "expectedParseResult": "empty"
+  },
+  "courses": []
+}
